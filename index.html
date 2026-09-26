@@ -30,7 +30,7 @@ body{
   width:322px;flex:0 0 322px;background:var(--bg2);border-right:1px solid var(--line);
   height:100vh;position:sticky;top:0;display:flex;flex-direction:column;
 }
-#brand{padding:18px 18px 12px;border-bottom:1px solid var(--line)}
+#brand{position:relative;padding:18px 18px 12px;border-bottom:1px solid var(--line)}
 #brand h1{margin:0;font-size:1.16em;letter-spacing:.04em;color:var(--accent)}
 #brand p{margin:5px 0 0;font-size:.72em;color:var(--fg2);line-height:1.5}
 #brand .copyright{margin-top:9px;padding-top:8px;border-top:1px dashed var(--line);font-size:.66em;color:var(--fg2);opacity:.85}
@@ -47,7 +47,7 @@ body{
 }
 .btn:hover{border-color:var(--accent);color:var(--accent)}
 .btn.on{background:var(--accent);border-color:var(--accent);color:#fff}
-#toc{overflow-y:auto;flex:1;padding:8px 0 40px}
+#toc{overflow-y:auto;flex:1 1 auto;min-height:0;padding:8px 0 40px;-webkit-overflow-scrolling:touch}
 .part{padding:12px 18px 4px;font-size:.74em;color:var(--accent2);font-weight:700;letter-spacing:.06em}
 .part span{color:var(--fg2);font-weight:400;letter-spacing:0}
 .item{
@@ -59,11 +59,13 @@ body{
 .item .no{color:var(--fg2);font-size:.85em;min-width:1.7em;text-align:right;flex:0 0 auto}
 .item .rd{color:var(--accent2);font-size:.85em}
 .tag{font-size:.68em;color:var(--fg2);border:1px solid var(--line);border-radius:3px;padding:0 3px;flex:0 0 auto}
-#hits{display:none;padding:6px 0}
+/* 搜索结果列表：必须和 #toc 一样自己滚动，否则结果一多就把侧栏撑出屏幕 */
+#hits{display:none;flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:6px 0 40px}
 #hits .hit{padding:7px 18px;cursor:pointer;border-left:3px solid transparent;font-size:.78em;line-height:1.5}
 #hits .hit:hover{background:var(--card)}
 #hits .hit b{color:var(--accent)}
 #hits .snip{color:var(--fg2);font-size:.9em}
+#hits .empty{padding:14px 18px;color:var(--fg2);font-size:.8em}
 
 /* ---------- 正文 ---------- */
 #main{flex:1;min-width:0;display:flex;flex-direction:column}
@@ -121,11 +123,21 @@ details.raw pre{
 #tocpart a:hover{color:var(--accent)}
 #tocpart a i{color:var(--fg2);font-style:normal;font-size:.85em;float:right}
 #menu{display:none}
+#close{display:none}
+/* 手机端抽屉的遮罩层：点空白处即可关闭目录 */
+#scrim{display:none}
 
 @media (max-width:860px){
-  #side{position:fixed;z-index:50;left:0;top:0;transform:translateX(-100%);transition:transform .22s;width:86vw;flex-basis:86vw}
+  #side{position:fixed;z-index:50;left:0;top:0;transform:translateX(-100%);transition:transform .22s;width:86vw;max-width:340px;flex-basis:86vw}
   #side.open{transform:none;box-shadow:0 0 40px rgba(0,0,0,.35)}
   #menu{display:inline-block}
+  #close{display:inline-block;position:absolute;top:11px;right:12px;padding:1px 9px;font-size:1em;line-height:1.5}
+  #scrim{
+    display:block;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:45;
+    opacity:0;pointer-events:none;transition:opacity .22s;
+  }
+  body.drawer-open #scrim{opacity:1;pointer-events:auto}
+  body.drawer-open{overflow:hidden}
   #content{padding:22px 18px 80px}
   #top{padding:9px 14px}
   article h1{font-size:1.44em}
@@ -142,6 +154,7 @@ details.raw pre{
 <div id="wrap">
   <aside id="side">
     <div id="brand">
+      <button class="btn" id="close" title="关闭目录" aria-label="关闭目录">✕</button>
       <h1>党史系列</h1>
       <p>从建党到建国 · 五十二集通览<br>思维实验室</p>
       <p class="copyright">文字整理自《思维实验室》B 站视频<br>
@@ -159,6 +172,7 @@ details.raw pre{
     <nav id="toc"></nav>
     <nav id="hits"></nav>
   </aside>
+  <div id="scrim" aria-hidden="true"></div>
   <main id="main">
     <div id="top">
       <button class="btn" id="menu">目录</button>
@@ -252,7 +266,7 @@ function go(stem, h){
     $('#content').innerHTML = '<article><h1>附录 · 术语勘误与转写说明</h1>' +
       '<div class="meta">机器转写必然有同音错字。下表是全书统一核对后的订正清单，供查证时对照。</div>' +
       meta.appendix + '</article>';
-    window.scrollTo(0,0); markActive(); return;
+    window.scrollTo(0,0); markActive(); setDrawer(false); return;
   }
   const c = chByStem[stem]; if(!c) return;
   state.cur = stem;
@@ -274,6 +288,7 @@ function go(stem, h){
   window.scrollTo(0,0);
   markActive();
   renderTOC();
+  setDrawer(false);            // 手机上跳转后自动收起目录
   if(h) highlight(h);
 }
 function navHTML(c){
@@ -311,7 +326,7 @@ function doSearch(q){
     d.onclick = () => { $('#q').value=''; doSearch(''); go(c.stem, qs[0]); };
     hits.appendChild(d);
   });
-  if(!total) hits.innerHTML = '<div class="hit">没有匹配的章节</div>';
+  if(!total) hits.innerHTML = '<div class="empty">没有匹配的章节</div>';
 }
 function highlight(term){
   if(!term || term.length < 1) return;
@@ -380,11 +395,23 @@ function syncView(){ $('#vHistory').classList.toggle('on', state.view==='history
 $('#vTheme').onclick = () => { state.theme = state.theme==='dark'?'light':'dark'; LS.set('theme',state.theme); applyTheme(); };
 $('#vPlus').onclick = () => { state.fs = Math.min(26, state.fs+1); LS.set('fs',state.fs); applyFs(); };
 $('#vMinus').onclick = () => { state.fs = Math.max(14, state.fs-1); LS.set('fs',state.fs); applyFs(); };
-$('#menu').onclick = () => $('#side').classList.toggle('open');
+/* ---------- 手机端抽屉：三种关闭方式（点空白遮罩 / ✕ 按钮 / Esc） ---------- */
+function setDrawer(open){
+  $('#side').classList.toggle('open', open);
+  document.body.classList.toggle('drawer-open', open);
+  if(open){ const q = $('#q'); if(window.innerWidth <= 860) setTimeout(()=>q.focus(), 240); }
+  else { const q = $('#q'); if(q === document.activeElement) q.blur(); }
+}
+$('#menu').onclick = () => setDrawer(!$('#side').classList.contains('open'));
+$('#scrim').onclick = () => setDrawer(false);
+$('#close').onclick = () => setDrawer(false);
+// 从手机宽度转回桌面时，必须清掉抽屉状态，否则 body 上的 overflow:hidden 会卡住滚动
+window.addEventListener('resize', () => { if(window.innerWidth > 860) setDrawer(false); });
 $('#q').addEventListener('input', e => doSearch(e.target.value));
 $('#q').addEventListener('keydown', e => { if(e.key==='Enter'){ const h = document.querySelector('#hits .hit'); if(h && h.onclick) h.onclick(); } });
 document.addEventListener('keydown', e => {
-  if(e.target.tagName === 'INPUT') { if(e.key==='Escape'){ $('#q').value=''; doSearch(''); $('#q').blur(); } return; }
+  if(e.target.tagName === 'INPUT') { if(e.key==='Escape'){ $('#q').value=''; doSearch(''); $('#q').blur(); setDrawer(false); } return; }
+  if(e.key === 'Escape'){ setDrawer(false); return; }
   if(e.key === '/'){ e.preventDefault(); $('#q').focus(); return; }
   if(e.key === 'ArrowLeft'){ const c = chByStem[state.cur]; if(c && c.i>0) go(BOOK.chapters[c.i-1].stem); }
   if(e.key === 'ArrowRight'){ const c = chByStem[state.cur]; if(c && c.i<BOOK.chapters.length-1) go(BOOK.chapters[c.i+1].stem); }
