@@ -37,13 +37,14 @@ body{
 #brand .copyright a{color:var(--accent);text-decoration:none}
 #tools{padding:10px 14px;display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--line)}
 #tools input[type=search]{
-  flex:1 1 100%;padding:7px 10px;border:1px solid var(--line);border-radius:6px;
+  flex:1 1 100%;min-width:0;width:100%;padding:7px 10px;border:1px solid var(--line);border-radius:6px;
   background:var(--card);color:var(--fg);font-size:.8em;font-family:inherit;outline:none;
 }
 #tools input[type=search]:focus{border-color:var(--accent)}
 .btn{
   border:1px solid var(--line);background:var(--card);color:var(--fg2);
   border-radius:6px;padding:5px 9px;font-size:.72em;cursor:pointer;font-family:inherit;line-height:1.2;
+  min-width:0;white-space:nowrap;
 }
 .btn:hover{border-color:var(--accent);color:var(--accent)}
 .btn.on{background:var(--accent);border-color:var(--accent);color:#fff}
@@ -51,9 +52,10 @@ body{
 .part{padding:12px 18px 4px;font-size:.74em;color:var(--accent2);font-weight:700;letter-spacing:.06em}
 .part span{color:var(--fg2);font-weight:400;letter-spacing:0}
 .item{
-  display:flex;gap:8px;align-items:baseline;padding:6px 18px;cursor:pointer;
-  font-size:.82em;color:var(--fg);border-left:3px solid transparent;line-height:1.45;
+  display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;padding:6px 18px;cursor:pointer;
+  font-size:.82em;color:var(--fg);border-left:3px solid transparent;line-height:1.45;min-width:0;
 }
+.item > span:nth-child(2){flex:1 1 55%;min-width:0;word-break:break-word;overflow-wrap:anywhere}
 .item:hover{background:var(--card)}
 .item.active{background:var(--card);border-left-color:var(--accent);color:var(--accent);font-weight:700}
 .item .no{color:var(--fg2);font-size:.85em;min-width:1.7em;text-align:right;flex:0 0 auto}
@@ -61,10 +63,10 @@ body{
 .tag{font-size:.68em;color:var(--fg2);border:1px solid var(--line);border-radius:3px;padding:0 3px;flex:0 0 auto}
 /* 搜索结果列表：必须和 #toc 一样自己滚动，否则结果一多就把侧栏撑出屏幕 */
 #hits{display:none;flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:6px 0 40px}
-#hits .hit{padding:7px 18px;cursor:pointer;border-left:3px solid transparent;font-size:.78em;line-height:1.5}
+#hits .hit{padding:7px 18px;cursor:pointer;border-left:3px solid transparent;font-size:.78em;line-height:1.5;word-break:break-word;overflow-wrap:anywhere;min-width:0}
 #hits .hit:hover{background:var(--card)}
 #hits .hit b{color:var(--accent)}
-#hits .snip{color:var(--fg2);font-size:.9em}
+#hits .snip{color:var(--fg2);font-size:.9em;word-break:break-word;overflow-wrap:anywhere}
 #hits .empty{padding:14px 18px;color:var(--fg2);font-size:.8em}
 
 /* ---------- 正文 ---------- */
@@ -128,10 +130,14 @@ details.raw pre{
 #scrim{display:none}
 
 @media (max-width:860px){
-  #side{position:fixed;z-index:50;left:0;top:0;transform:translateX(-100%);transition:transform .22s;width:86vw;max-width:340px;flex-basis:86vw}
+  #side{position:fixed;z-index:50;left:0;top:0;transform:translateX(-100%);transition:transform .22s;width:86vw;max-width:340px;flex-basis:86vw;overflow:hidden}
   #side.open{transform:none;box-shadow:0 0 40px rgba(0,0,0,.35)}
   #menu{display:inline-block}
   #close{display:inline-block;position:absolute;top:11px;right:12px;padding:1px 9px;font-size:1em;line-height:1.5}
+  #brand{padding:14px 14px 10px}
+  #tools{padding:10px 12px;gap:5px}
+  /* 关键：字号必须 >= 16px，否则 iOS Safari 聚焦输入框时会自动放大整页（看起来就像被撑溢出） */
+  #tools input[type=search]{font-size:16px;padding:8px 10px}
   #scrim{
     display:block;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:45;
     opacity:0;pointer-events:none;transition:opacity .22s;
@@ -399,8 +405,8 @@ $('#vMinus').onclick = () => { state.fs = Math.max(14, state.fs-1); LS.set('fs',
 function setDrawer(open){
   $('#side').classList.toggle('open', open);
   document.body.classList.toggle('drawer-open', open);
-  if(open){ const q = $('#q'); if(window.innerWidth <= 860) setTimeout(()=>q.focus(), 240); }
-  else { const q = $('#q'); if(q === document.activeElement) q.blur(); }
+  // 注意：这里**不要**自动聚焦搜索框。手机上聚焦会弹出键盘（旧版 iOS 还会自动放大整页）。
+  if(!open){ const q = $('#q'); if(q === document.activeElement) q.blur(); }
 }
 $('#menu').onclick = () => setDrawer(!$('#side').classList.contains('open'));
 $('#scrim').onclick = () => setDrawer(false);
